@@ -104,6 +104,7 @@ def csv(circuit_name, sorted_keys, sorted_counts):
 for i in circuits:
 	circuit_name = type(i).__name__
 	print(circuit_name)
+	print(i.qasm())
 	print(i.qc.draw())
 	job_exp = execute(i.qc, backend=backend, shots=shots, max_credits=max_credits)
 	job_monitor(job_exp)
@@ -114,8 +115,8 @@ for i in circuits:
 	sorted_counts = []
 	for i in sorted_keys:
 		sorted_counts.append(counts_exp.get(i))
-	print(sorted_counts)
 	csv(circuit_name, sorted_keys, sorted_counts)
+	print()
 
 print('Done!')
 
