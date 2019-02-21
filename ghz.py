@@ -8,7 +8,6 @@
 # WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
 
 from qiskit.tools.monitor import job_monitor
-from pylab import *
 from qiskit import execute
 from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
 import numpy as np
@@ -68,8 +67,8 @@ else:
         backend = IBMQ.get_backend('ibmq_qasm_simulator')
     else:
         from qiskit.providers.ibmq import least_busy
-        large_enough_devices = IBMQ.backends(filters=lambda x: x.configuration().n_qubits > 4 and
-                                             not x.configuration().simulator)
+        large_enough_devices = IBMQ.backends(filters=lambda x: x.configuration().n_qubits > 4
+                                             and not x.configuration().simulator)
         backend = least_busy(large_enough_devices)
         print("The best backend is " + backend.name())
 
@@ -89,34 +88,38 @@ shots = 1024
 max_credits = 3
 
 # Create circuits
-circuits = [ghzc.GHZState3Q(),ghzc.GHZ_YYX(),ghzc.GHZ_YXY(),ghzc.GHZ_XYY(),ghzc.GHZ_XXX(),ghzc.GHZ_XYX()]
+circuits = [ghzc.GHZState3Q(), ghzc.GHZ_YYX(), ghzc.GHZ_YXY(),
+            ghzc.GHZ_XYY(), ghzc.GHZ_XXX(), ghzc.GHZ_XYX()]
+
 
 def csv(circuit_name, sorted_keys, sorted_counts):
-	print(circuit_name)
-	for key in sorted_keys:
-		print(key, end=';')
-	print()
-	for count in sorted_counts:                          
-		print(count, end=';')
-	print()
+    print(circuit_name)
+    for key in sorted_keys:
+        print(key, end=';')
+    print()
+    for count in sorted_counts:
+        print(count, end=';')
+    print()
+
 
 # Iterate executing
 for i in circuits:
-	circuit_name = type(i).__name__
-	print(circuit_name)
-	print(i.qasm())
-	print(i.qc.draw())
-	job_exp = execute(i.qc, backend=backend, shots=shots, max_credits=max_credits)
-	job_monitor(job_exp)
-	result_exp = job_exp.result()
-	counts_exp = result_exp.get_counts(i.qc)
-	print(counts_exp)
-	sorted_keys = sorted(counts_exp.keys())
-	sorted_counts = []
-	for i in sorted_keys:
-		sorted_counts.append(counts_exp.get(i))
-	csv(circuit_name, sorted_keys, sorted_counts)
-	print()
+    circuit_name = type(i).__name__
+    print(circuit_name)
+    print(i.qasm())
+    print(i.qc.draw())
+    job_exp = execute(i.qc, backend=backend, shots=shots,
+                      max_credits=max_credits)
+    job_monitor(job_exp)
+    result_exp = job_exp.result()
+    counts_exp = result_exp.get_counts(i.qc)
+    print(counts_exp)
+    sorted_keys = sorted(counts_exp.keys())
+    sorted_counts = []
+    for i in sorted_keys:
+        sorted_counts.append(counts_exp.get(i))
+    csv(circuit_name, sorted_keys, sorted_counts)
+    print()
 
 print('Done!')
 
