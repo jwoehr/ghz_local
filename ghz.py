@@ -45,6 +45,8 @@ parser.add_argument("-i", "--identity", action="store",
                     help="IBM Q Experience identity token")
 parser.add_argument("--url", action="store", default='https://quantumexperience.ng.bluemix.net/api',
                     help="URL, default is https://quantumexperience.ng.bluemix.net/api")
+parser.add_argument("-t", "--test", action="store_true",
+                    help="Only print circuits in qasm and drawing and exit.")
 parser.add_argument("-u", "--usage", action="store_true",
                     help="Show long usage message and exit 0")
 args = parser.parse_args()
@@ -53,7 +55,10 @@ if args.usage:
     print(long_explan)
     exit(0)
 
-# exit()
+# If --test, just print circuits and exit
+if args.test:
+    ghzc.test()
+    exit(0)
 
 # Choose backend
 backend = None
