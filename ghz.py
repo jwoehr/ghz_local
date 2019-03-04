@@ -41,6 +41,10 @@ group.add_argument("-s", "--sim", action="store_true",
                    help="Use IBMQ qasm simulator")
 group.add_argument("-a", "--aer", action="store_true",
                    help="User QISKit aer simulator")
+parser.add_argument("-i", "--identity", action="store",
+                    help="IBM Q Experience identity token")
+parser.add_argument("--url", action="store", default='https://quantumexperience.ng.bluemix.net/api',
+                    help="URL, default is https://quantumexperience.ng.bluemix.net/api")
 parser.add_argument("-u", "--usage", action="store_true",
                     help="Show long usage message and exit 0")
 args = parser.parse_args()
@@ -61,7 +65,11 @@ if args.aer:
     backend = BasicAer.get_backend('statevector_simulator')
 else:
     from qiskit import IBMQ
-    IBMQ.load_accounts()
+    if args.identity:
+        IBMQ.enable_account(args.identity, url=args.url)
+    else:
+        IBMQ.load_accounts()
+
     # Choose backend and connect
     if args.sim:
         backend = IBMQ.get_backend('ibmq_qasm_simulator')
