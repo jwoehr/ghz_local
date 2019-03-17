@@ -13,6 +13,7 @@ from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
 import numpy as np
 import argparse
 import sys
+import datetime
 import ghz_circuits as ghzc
 
 explanation = """GHZ Local : Local Realism in Greenberger, Horne, and Zeilinger
@@ -49,11 +50,25 @@ parser.add_argument("-t", "--test", action="store_true",
                     help="Only print circuits in qasm and drawing and exit.")
 parser.add_argument("-u", "--usage", action="store_true",
                     help="Show long usage message and exit 0")
+parser.add_argument("-v", "--verbose", action="count", default=0,
+                    help="Increase verbosity each -v up to 3")
+parser.add_argument("--qasm", action="store_true",
+                    help="Print circuit name and qasm code for each circuit")
+parser.add_argument("--draw", action="store_true",
+                    help="Draw each circuit")
+parser.add_argument("--results", action="store_true",
+                    help="Print raw results for each experiment")
+
 args = parser.parse_args()
 
 if args.usage:
     print(long_explan)
     exit(0)
+
+def verbosity(text, count):
+    """Verbose error messages by level"""
+    if args.verbose >= count:
+        print(text)
 
 # If --test, just print circuits and exit
 if args.test:
@@ -83,10 +98,9 @@ else:
         large_enough_devices = IBMQ.backends(filters=lambda x: x.configuration().n_qubits > 4
                                              and not x.configuration().simulator)
         backend = least_busy(large_enough_devices)
-        print("The best backend is " + backend.name())
+        verbosity("The best backend is " + backend.name(), 1)
 
-print("Backend is", end=" ")
-print(backend)
+verbosity("Backend is " + backend.name(), 1)
 
 if backend == None:
     print("No backend available, quitting.")
@@ -105,35 +119,41 @@ circuits = [ghzc.GHZState3Q(), ghzc.GHZ_YYX(), ghzc.GHZ_YXY(),
             ghzc.GHZ_XYY(), ghzc.GHZ_XXX(), ghzc.GHZ_XYX()]
 
 
-def csv(circuit_name, sorted_keys, sorted_counts):
-    print(circuit_name)
+def csv_from_sorted(circuit_name, sorted_keys, sorted_counts):
+    print(circuit_name, end=';')
     for key in sorted_keys:
         print(key, end=';')
     print()
+    print (datetime.datetime.now().isoformat(), end=';')
     for count in sorted_counts:
         print(count, end=';')
     print()
 
+def csv(circuit_name, counts_exp):
+    sorted_keys = sorted(counts_exp.keys())
+    sorted_counts = []
+    for i in sorted_keys:
+        sorted_counts.append(counts_exp.get(i))
+    csv_from_sorted(circuit_name, sorted_keys, sorted_counts)
 
 # Iterate executing
 for i in circuits:
     circuit_name = type(i).__name__
-    print(circuit_name)
-    print(i.qasm())
-    print(i.qc.draw())
+    if args.qasm:
+        print(circuit_name)
+        print(i.qasm())
+    if args.draw:
+        print(i.qc.draw())
     job_exp = execute(i.qc, backend=backend, shots=shots,
                       max_credits=max_credits)
     job_monitor(job_exp)
     result_exp = job_exp.result()
     counts_exp = result_exp.get_counts(i.qc)
-    print(counts_exp)
-    sorted_keys = sorted(counts_exp.keys())
-    sorted_counts = []
-    for i in sorted_keys:
-        sorted_counts.append(counts_exp.get(i))
-    csv(circuit_name, sorted_keys, sorted_counts)
+    if args.results:
+        print(counts_exp)
+    csv(circuit_name, counts_exp)
     print()
 
-print('Done!')
+verbosity('Done!', 1)
 
 # End
