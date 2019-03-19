@@ -56,6 +56,10 @@ parser.add_argument("--qasm", action="store_true",
                     help="Print circuit name and qasm code for each circuit")
 parser.add_argument("--draw", action="store_true",
                     help="Draw each circuit")
+parser.add_argument("--to_err", action="store_true",
+                    help="Redirect job monitor messages to stderr")
+parser.add_argument("--quiet", action="store_true",
+                    help="Suppress job monitor messages")
 parser.add_argument("--results", action="store_true",
                     help="Print raw results for each experiment")
 
@@ -146,7 +150,12 @@ for i in circuits:
         print(i.qc.draw())
     job_exp = execute(i.qc, backend=backend, shots=shots,
                       max_credits=max_credits)
-    job_monitor(job_exp)
+
+    if args.quiet or args.to_err:
+        job_monitor(job_exp, quiet=args.quiet, to_err=args.to_err)
+    else:
+        job_monitor(job_exp)
+
     result_exp = job_exp.result()
     counts_exp = result_exp.get_counts(i.qc)
     if args.results:
