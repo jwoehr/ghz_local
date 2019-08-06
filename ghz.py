@@ -1,16 +1,16 @@
-# ghz.py
-# Greenberger, Horne, and Zeilinger
-# Based on
-# https://quantumexperience.ng.bluemix.net/qx/tutorial?sectionId=full-user-guide&page=003-Multiple_Qubits_Gates_and_Entangled_States~2F003-GHZ_States
-# Copyright 2019 Jack Woehr jwoehr@softwoehr.com PO Box 51, Golden, CO 80402-0051
-# BSD-3 license -- See LICENSE which you should have received with this code.
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+"""ghz.py
+Greenberger, Horne, and Zeilinger
+Based on
+https://quantumexperience.ng.bluemix.net/qx/tutorial?sectionId=full-user-guide&page=003-Multiple_Qubits_Gates_and_Entangled_States~2F003-GHZ_States
+Copyright 2019 Jack Woehr jwoehr@softwoehr.com PO Box 51, Golden, CO 80402-0051
+BSD-3 license -- See LICENSE which you should have received with this code.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+"""
 
-from qiskit.tools.monitor import job_monitor
 from qiskit import execute
-from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
-import numpy as np
+from qiskit.tools.monitor import job_monitor
+
 import argparse
 import sys
 import datetime
@@ -42,10 +42,13 @@ group.add_argument("-s", "--sim", action="store_true",
                    help="Use IBMQ qasm simulator")
 group.add_argument("-a", "--aer", action="store_true",
                    help="User QISKit aer simulator")
-parser.add_argument("-i", "--identity", action="store",
-                    help="IBM Q Experience identity token")
-parser.add_argument("--url", action="store", default='https://quantumexperience.ng.bluemix.net/api',
-                    help="URL, default is https://quantumexperience.ng.bluemix.net/api")
+parser.add_argument("-b", "--backend", action="store",
+                    help="""genuine qpu backend to use, default is least busy
+                    of large enough devices""")
+parser.add_argument("--token", action="store",
+                    help="Use this token if a --url argument is also provided")
+parser.add_argument("--url", action="store",
+                    help="Use this url if a --token argument is also provided")
 parser.add_argument("-t", "--test", action="store_true",
                     help="Only print circuits in qasm and drawing and exit.")
 parser.add_argument("-u", "--usage", action="store_true",
@@ -69,10 +72,16 @@ if args.usage:
     print(long_explan)
     exit(0)
 
+if (args.token and not args.url) or (args.url and not args.token):
+    print('--token and --url must be used together or not at all', file=sys.stderr)
+    exit(1)
+
+
 def verbosity(text, count):
     """Verbose error messages by level"""
     if args.verbose >= count:
         print(text)
+
 
 # If --test, just print circuits and exit
 if args.test:
@@ -89,24 +98,27 @@ if args.aer:
     backend = BasicAer.get_backend('statevector_simulator')
 else:
     from qiskit import IBMQ
-    if args.identity:
-        IBMQ.enable_account(args.identity, url=args.url)
+    if args.token:
+        provider = IBMQ.enable_account(args.token, url=args.url)
     else:
-        IBMQ.load_accounts()
+        provider = IBMQ.load_account()
 
     # Choose backend and connect
     if args.sim:
-        backend = IBMQ.get_backend('ibmq_qasm_simulator')
+        backend = provider.get_backend('ibmq_qasm_simulator')
     else:
-        from qiskit.providers.ibmq import least_busy
-        large_enough_devices = IBMQ.backends(filters=lambda x: x.configuration().n_qubits > 4
-                                             and not x.configuration().simulator)
-        backend = least_busy(large_enough_devices)
+        if args.backend:
+            backend = provider.get_backend(args.backend)
+        else:
+            from qiskit.providers.ibmq import least_busy
+            large_enough_devices = provider.backends(filters=lambda x: x.configuration().n_qubits > 5
+                                                     and not x.configuration().simulator)
+            backend = least_busy(large_enough_devices)
         verbosity("The best backend is " + backend.name(), 1)
 
 verbosity("Backend is " + backend.name(), 1)
 
-if backend == None:
+if backend is None:
     print("No backend available, quitting.")
     exit(100)
 
@@ -124,21 +136,25 @@ circuits = [ghzc.GHZState3Q(), ghzc.GHZ_YYX(), ghzc.GHZ_YXY(),
 
 
 def csv_from_sorted(circuit_name, sorted_keys, sorted_counts):
+    """Create csv string from sorted keys and counts"""
     print(circuit_name, end=';')
     for key in sorted_keys:
         print(key, end=';')
     print()
-    print (datetime.datetime.now().isoformat(), end=';')
+    print(datetime.datetime.now().isoformat(), end=';')
     for count in sorted_counts:
         print(count, end=';')
     print()
 
+
 def csv(circuit_name, counts_exp):
+    """Create csv string from circuit name and counts"""
     sorted_keys = sorted(counts_exp.keys())
     sorted_counts = []
-    for i in sorted_keys:
-        sorted_counts.append(counts_exp.get(i))
+    for key in sorted_keys:
+        sorted_counts.append(counts_exp.get(key))
     csv_from_sorted(circuit_name, sorted_keys, sorted_counts)
+
 
 # Iterate executing
 for i in circuits:
@@ -152,7 +168,8 @@ for i in circuits:
                       max_credits=max_credits)
 
     if args.quiet or args.to_err:
-        job_monitor(job_exp, quiet=args.quiet, to_err=args.to_err)
+        job_monitor(job_exp, quiet=args.quiet,
+                    output=sys.stderr if args.to_err else sys.stdout)
     else:
         job_monitor(job_exp)
 
