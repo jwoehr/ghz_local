@@ -96,6 +96,7 @@ if args.aer:
     from qiskit import BasicAer
     # Run the quantum circuit on a statevector simulator backend
     backend = BasicAer.get_backend('statevector_simulator')
+    # backend = BasicAer.get_backend('unitary_simulator')
 else:
     from qiskit import IBMQ
     if args.token:
@@ -174,6 +175,9 @@ for i in circuits:
         job_monitor(job_exp)
 
     result_exp = job_exp.result()
+    if args.aer:
+        print(result_exp.get_statevector())
+        # print(result_exp.get_unitary())
     counts_exp = result_exp.get_counts(i.qc)
     if args.results:
         print(counts_exp)
